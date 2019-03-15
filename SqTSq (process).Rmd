@@ -1,0 +1,231 @@
+---
+title: "SqTSq (process)"
+author: "George Ionitsa"
+---
+
+```{r}
+library(lpSolve)
+```
+
+This code helps to make all possible 'squares' in a matrix 5x5. 
+VM will be the list of all matrices. In every new iteration we add an additional matrix in the list.
+
+I do not like how I create zero M matrix every time. I believe it can be done more beautiful.
+
+Overall, this is a code with 3 whiles, where there the first one is a loop for different sizes of squares and the next two are simple loops to fill ones in the right order. 
+
+```{r}
+VM <- list()
+count <- 1
+M <- matrix(0, nrow = 5 , ncol = 5) #creating 5x5 zero matrix
+i = 1
+j = 1
+size = 0 
+while (size <= 3){
+  while (i <= 5 - size){
+    while (j <= 5 - size){
+      M <- matrix(0, nrow = 5 , ncol = 5) #reset this matrix every time
+      M[i:(i+size),j:(j+size)] <- 1
+      print(M)
+      j = j+1
+      VM[[count]] <- M
+      count = count + 1
+    }
+    j = 1
+    i = i+1
+  }
+j = 1
+i = 1  
+size = size + 1
+}
+```
+
+Next step is to represent matrices as strings. Firstly, I started to write it purely mathematical. However, I realised that this is R and probably there is a special function for this and voila: ```as.vector()```.
+
+
+```{r}
+HM <- c() #HM stands for Huge Matrix since it will be huge. 
+count <- 1
+while (count <= 54){
+  HM <- rbind(HM,as.vector(VM[[count]])) #simply use rbind to connect arrays 
+  count = count + 1 
+} 
+HM <- t(HM) #transpose to bring it to the right dimensions
+print(HM)
+```
+
+Now we can apply lp to solve this problem.
+
+```{r}
+f.obj <- rep(1,54)
+f.con <- HM
+f.dir <- rep("=", 25)
+f.rhs <- rep(1, 25)
+lp("min", f.obj, f.con, f.dir, f.rhs)$solution
+```
+
+
+This is great that our code gave us integer positive solutions. 
+However, I think it is neccessary to add additional constraints in terms of the form: xi <= 1 for each i. 
+
+I assume it can be done like this:
+
+```{r}
+f.obj <- rep(1,54)
+f.con <- rbind(HM,diag(54))
+f.dir <- c(rep("=", 25),rep("<=", 54))
+f.rhs <- c(rep(1, 25), rep(1,54))
+x <- lp("min", f.obj, f.con, f.dir, f.rhs)$solution
+```
+
+I hope it does actually work like this. 
+Now I will try to beautifully draw it. 
+I have no clue how to do it more efficient without having 4 consecutive whiles:
+(I know how. It is one while function with an idea of a sum of consecutive squares.)
+
+```{r}
+RM <- matrix(0, nrow = 5, ncol = 5) #RM stands for Result Matrix since it will be a result. 
+count <- 1
+while (count <= 25){
+  if (x[count] == 1)
+    RM <- RM + VM[[count]]  
+    count = count + 1 
+} 
+
+while (count <= 41){
+  if (x[count] == 1)
+    RM <- RM + 2*VM[[count]]  
+    count = count + 1 
+} 
+
+
+while (count <= 50){
+  if (x[count] == 1)
+    RM <- RM + 3*VM[[count]]  
+    count = count + 1 
+} 
+
+
+while (count <= 54){
+  if (x[count] == 1)
+    RM <- RM + 4*VM[[count]]  
+    count = count + 1 
+} 
+print(RM)
+```
+
+Now we can distinguish 1x1, 2x2, 3x3 and 4x4 squares. For example, if there is 2 in a matrix - it is a part of a 2x2 square.
+
+Since my code with 3 whiles is pretty universal, it is very simple to upgrade it to the n-case.  
+All we need to do is to change ```size``` and ```M <- matrix(0, nrow = n , ncol = n)```
+I hope it will work.
+
+Comment: I think I found better way to reset matrix. Instead of creating a zero matrix again, I put zeros back in given cells.
+
+```{r}
+n = 7
+VM <- list()
+count <- 1
+M <- matrix(0, nrow = n , ncol = n) #creating 5x5 zero matrix
+i = 1
+j = 1
+size = 0 
+while (size <= n-2){
+  while (i <= n - size){
+    while (j <= n - size){
+      M <- matrix(0, nrow = n , ncol = n) 
+      M[i:(i+size),j:(j+size)] <- 1
+      j = j+1
+      VM[[count]] <- M
+      count = count + 1
+    }
+    j = 1
+    i = i+1
+  }
+j = 1
+i = 1  
+size = size + 1
+}
+```
+
+I am surprised, but it worked. However, my idea with having ```M[i:(i+size),j:(j+size)] <- 1``` instead of ```M <- matrix(0, nrow = n , ncol = n) ``` failed. 
+I probably now why. Because, I put this ```M[i:(i+size),j:(j+size)] <- 0``` after I change value of j. Now it is fixed. 
+Second try:
+
+```{r}
+n = 7
+VM <- list()
+count <- 1
+M <- matrix(0, nrow = n , ncol = n) #creating 7x7 zero matrix
+i = 1
+j = 1
+size = 0 
+while (size <= n-2){
+  while (i <= n - size){
+    while (j <= n - size){
+      M[i:(i+size),j:(j+size)] <- 1
+      VM[[count]] <- M
+      M[i:(i+size),j:(j+size)] <- 0
+      count = count + 1
+      j = j+1
+    }
+    j = 1
+    i = i+1
+  }
+j = 1
+i = 1  
+size = size + 1
+}
+```
+
+Ok.
+
+```{r}
+
+check = n
+amofel = 0
+while (check > 1){
+  amofel = amofel + check*check
+  check = check-1
+} 
+
+##It is to understand how many possible squares we will have.  
+
+```
+
+```{r}
+HM <- c() #HM stands for Huge Matrix since it will be huge. 
+count <- 1
+while (count <= amofel){
+  HM <- rbind(HM,as.vector(VM[[count]])) #simply use rbind to connect arrays 
+  count = count + 1 
+} 
+HM <- t(HM) #transpose to bring it to the right dimensions
+
+```
+
+```{r}
+f.obj <- rep(1, amofel)
+f.con <- HM
+f.dir <- rep("=", n*n)
+f.rhs <- rep(1, n*n)
+solution <- lp("min", f.obj, f.con, f.dir, f.rhs, all.int=TRUE)$solution
+print(solution)
+
+```
+
+Many apologises for a lack of comments in a last part. However, it is done for n-case.
+
+```{r}
+i = 1
+count = 0
+while (i <= length(solution)){
+  if (solution[i] == 1){
+    print(VM[[i]])
+    count = count + 1
+  }
+  i = i+1
+}
+
+print(count)
+```

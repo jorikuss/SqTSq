@@ -1,0 +1,70 @@
+---
+title: "SqTSq"
+author: "George Ionitsa"
+---
+
+```{r}
+library("lpSolve")
+```
+
+General case:
+
+```{r}
+n = 11
+VM <- list()
+count <- 1
+M <- matrix(0, nrow = n , ncol = n)
+i = 1
+j = 1
+size = 0 
+while (size <= n-2){
+  while (i <= n - size){
+    while (j <= n - size){
+      M[i:(i+size),j:(j+size)] <- 1
+      VM[[count]] <- M
+      M[i:(i+size),j:(j+size)] <- 0
+      count = count + 1
+      j = j+1
+    }
+    j = 1
+    i = i+1
+  }
+j = 1
+i = 1  
+size = size + 1
+}
+
+check = n
+amofel = 0
+while (check > 1){
+  amofel = amofel + check*check
+  check = check-1
+} 
+
+HM <- c() #HM stands for Huge Matrix since it will be huge. 
+count <- 1
+while (count <= amofel){
+  HM <- rbind(HM,as.vector(VM[[count]])) #simply use rbind to connect arrays 
+  count = count + 1 
+} 
+HM <- t(HM) #transpose to bring it to the right dimensions
+
+f.obj <- rep(1, amofel)
+f.con <- HM
+f.dir <- rep("=", n*n)
+f.rhs <- rep(1, n*n)
+solution <- lp("min", f.obj, f.con, f.dir, f.rhs, all.int=TRUE)$solution
+print(solution)
+
+i = 1
+count = 0
+while (i <= length(solution)){
+  if (solution[i] == 1){
+    print(VM[[i]])
+    count = count + 1
+  }
+  i = i+1
+}
+
+print(count)
+```
